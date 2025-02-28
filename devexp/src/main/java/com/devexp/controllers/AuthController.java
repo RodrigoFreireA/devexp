@@ -2,7 +2,6 @@ package com.devexp.controllers;
 
 import com.devexp.dto.LoginDTO;
 import com.devexp.services.AuthServices;
-import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -12,19 +11,20 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/auth")
 public class AuthController {
 
-    private final AuthServices authService;
+    private final AuthServices authServices;
 
     public AuthController(AuthServices authService) {
-        this.authService = authService;
+        this.authServices = authService;
     }
 
     @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestBody @Valid LoginDTO loginDTO) {
-    	boolean authenticated = authService.authenticate(loginDTO);
-        if (authenticated) {
-            return ResponseEntity.ok("Login bem-sucedido!");
+    public ResponseEntity<?> login(@RequestBody LoginDTO loginDTO) {
+        String token = authServices.authenticate(loginDTO);
+
+        if (token != null) {
+            return ResponseEntity.ok().body("Token: " + token);
         } else {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Credenciais inválidas!");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("{\"error\": \"Credenciais inválidas\"}");
         }
     }
 }
