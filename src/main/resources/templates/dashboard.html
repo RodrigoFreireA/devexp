@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevExp - Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .navbar {
+            margin-bottom: 20px;
+        }
+        .post-form {
+            margin-bottom: 30px;
+        }
+        .post-textarea {
+            resize: none;
+            height: 100px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#">DevExp</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/dashboard">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/perfil">Perfil</a>
+                    </li>
+                </ul>
+                <button class="btn btn-light" onclick="logout()">Sair</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="row">
+            <div class="col-md-8 mx-auto">
+                <div class="post-form">
+                    <textarea class="form-control post-textarea" id="postContent" placeholder="O que você está pensando?"></textarea>
+                    <div class="d-flex justify-content-end mt-2">
+                        <button class="btn btn-primary" onclick="createPost()">Publicar</button>
+                    </div>
+                </div>
+
+                <div id="posts">
+                    <!-- Posts serão carregados aqui -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Verificar autenticação
+        const token = localStorage.getItem('token');
+        if (!token) {
+            window.location.href = '/login';
+        }
+
+        // Função para criar post
+        function createPost() {
+            const content = document.getElementById('postContent').value;
+            if (!content.trim()) return;
+
+            fetch('/api/posts', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token
+                },
+                body: JSON.stringify({ content: content })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('postContent').value = '';
+                loadPosts();
+            })
+            .catch(error => console.error('Erro ao criar post:', error));
+        }
+
+        // Função para carregar posts
+        function loadPosts() {
+            fetch('/api/posts', {
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                }
+            })
+            .then(response => response.json())
+            .then(posts => {
+                const postsContainer = document.getElementById('posts');
+                postsContainer.innerHTML = posts.map(post => `
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h6 class="card-subtitle mb-2 text-muted">${post.user.username}</h6>
+                            <p class="card-text">${post.content}</p>
+                            <div class="d-flex justify-content-between">
+                                <small class="text-muted">${new Date(post.createdAt).toLocaleString()}</small>
+                                <button class="btn btn-sm btn-outline-primary" onclick="likePost(${post.id})">
+                                    ❤️ ${post.likes}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            })
+            .catch(error => console.error('Erro ao carregar posts:', error));
+        }
+
+        // Função para dar like em um post
+        function likePost(postId) {
+            fetch(`/api/posts/${postId}/like`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                }
+            })
+            .then(response => response.json())
+            .then(data => loadPosts())
+            .catch(error => console.error('Erro ao dar like:', error));
+        }
+
+        // Função para fazer logout
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = '/login';
+        }
+
+        // Carregar posts ao iniciar
+        loadPosts();
+    </script>
+</body>
+</html> 
