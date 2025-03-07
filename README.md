@@ -111,13 +111,19 @@ REACT_APP_API_URL=http://localhost:8080
 3. Comece a compartilhar conhecimento através de posts
 4. Interaja com outros desenvolvedores através de curtidas e comentários
 
-## Telas
-![Telas da Aplicação]
-![LOGIN](https://github.com/user-attachments/assets/74d1a09b-b80a-4ceb-9740-f905a57c551b)
-![CADASTRO](https://github.com/user-attachments/assets/63a3f8fe-d5c7-4076-ab4b-b768364767cf)
-![FEED](https://github.com/user-attachments/assets/5ec5a385-a1da-4f74-ac49-e318e829a631)
-![POSTAGEM](https://github.com/user-attachments/assets/2c9f972a-1c29-4a9e-aa8a-1b7e608a0923)
-![CRUD](https://github.com/user-attachments/assets/071cd555-ab00-486f-a4e0-e8502926c563)
+## 📸 Telas da Aplicação
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/74d1a09b-b80a-4ceb-9740-f905a57c551b" width="250">
+  <img src="https://github.com/user-attachments/assets/63a3f8fe-d5c7-4076-ab4b-b768364767cf" width="250">
+  <img src="https://github.com/user-attachments/assets/5ec5a385-a1da-4f74-ac49-e318e829a631" width="250">
+</p>
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/2c9f972a-1c29-4a9e-aa8a-1b7e608a0923" width="250">
+  <img src="https://github.com/user-attachments/assets/071cd555-ab00-486f-a4e0-e8502926c563" width="250">
+</p>
+
 
 
 ## 👥 Contribuição
