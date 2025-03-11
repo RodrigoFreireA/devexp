@@ -8,6 +8,7 @@ import com.devexp.models.User;
 import com.devexp.models.Comment;
 import com.devexp.repositories.PostRepository;
 import com.devexp.repositories.UserRepository;
+import com.devexp.repositories.CommentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -28,6 +29,9 @@ public class PostController {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private CommentRepository commentRepository;
 
     @GetMapping
     public List<PostDTO> getAllPosts() {
@@ -126,26 +130,38 @@ public class PostController {
     @PostMapping("/{id}/comment")
     public ResponseEntity<?> addComment(@PathVariable Long id, @RequestBody Map<String, Object> payload) {
         try {
+            System.out.println("Recebendo requisição de comentário: " + payload);
+            
+            if (!payload.containsKey("userId") || !payload.containsKey("content")) {
+                return ResponseEntity.badRequest().body("userId e content são obrigatórios");
+            }
+
             Long userId = Long.parseLong(payload.get("userId").toString());
             String content = payload.get("content").toString();
             
+            System.out.println("Buscando post com ID: " + id);
             Post post = postRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Post não encontrado"));
             
+            System.out.println("Buscando usuário com ID: " + userId);
             User user = userRepository.findById(userId)
                     .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
 
+            System.out.println("Criando novo comentário");
             Comment comment = new Comment();
-            comment.setContent(content);
+            comment.setContent(content.trim());
             comment.setAuthor(user);
             comment.setPost(post);
             
-            post.getComments().add(comment);
-            postRepository.save(post);
+            System.out.println("Salvando comentário com autor: " + user.getId() + " e post: " + post.getId());
+            comment = commentRepository.save(comment);
             
+            System.out.println("Comentário salvo com ID: " + comment.getId());
             return ResponseEntity.ok(convertToDTO(post));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().build();
+            System.err.println("Erro ao adicionar comentário: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body("Erro ao adicionar comentário: " + e.getMessage());
         }
     }
 

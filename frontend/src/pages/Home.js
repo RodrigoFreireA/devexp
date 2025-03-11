@@ -49,6 +49,11 @@ function Home() {
   };
 
   const handleLike = async (postId) => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+
     try {
       await postService.likePost(postId);
       loadPosts(); // Recarrega os posts para atualizar o número de likes
@@ -58,6 +63,11 @@ function Home() {
   };
 
   const handleComment = async (postId) => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+
     if (!comments[postId]) return;
 
     try {
@@ -153,23 +163,23 @@ function Home() {
               <CardActions>
                 <IconButton
                   onClick={() => handleLike(post.id)}
-                  color={post.likes.includes(user.id) ? 'primary' : 'default'}
+                  color={user && post.likes?.includes(user.id) ? 'primary' : 'default'}
                 >
-                  {post.likes.includes(user.id) ? (
+                  {user && post.likes?.includes(user.id) ? (
                     <Favorite />
                   ) : (
                     <FavoriteBorder />
                   )}
                 </IconButton>
                 <Typography variant="body2">
-                  {post.likes.length} curtidas
+                  {post.likes?.length || 0} curtidas
                 </Typography>
 
                 <IconButton>
                   <CommentIcon />
                 </IconButton>
                 <Typography variant="body2">
-                  {post.comments.length} comentários
+                  {post.comments?.length || 0} comentários
                 </Typography>
 
                 <IconButton>
@@ -178,7 +188,7 @@ function Home() {
               </CardActions>
 
               <Box p={2}>
-                {post.comments.map((comment) => (
+                {post.comments?.map((comment) => (
                   <Box key={comment.id} mb={2}>
                     <Box display="flex" alignItems="center">
                       <Avatar

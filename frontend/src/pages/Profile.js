@@ -16,25 +16,25 @@ import axios from 'axios';
 
 function Profile() {
   const { id } = useParams();
+  const currentUser = JSON.parse(localStorage.getItem('user'));
+  const isOwnProfile = !id || currentUser?.id === Number(id);
+  
   const [user, setUser] = useState(null);
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    github: '',
-    bio: '',
-    experienceLevel: ''
+    name: currentUser?.name || '',
+    email: currentUser?.email || '',
+    github: currentUser?.github || '',
+    bio: currentUser?.bio || '',
+    experienceLevel: currentUser?.experienceLevel || ''
   });
-
-  const currentUser = JSON.parse(localStorage.getItem('user'));
-  const isOwnProfile = !id || currentUser?.id === Number(id);
 
   useEffect(() => {
     const loadUserData = async () => {
       try {
-        if (isOwnProfile) {
+        if (isOwnProfile && currentUser) {
           setUser(currentUser);
           setFormData({
             name: currentUser.name || '',
@@ -43,9 +43,16 @@ function Profile() {
             bio: currentUser.bio || '',
             experienceLevel: currentUser.experienceLevel || ''
           });
-        } else {
+        } else if (id) {
           const response = await axios.get(`/api/users/${id}`);
           setUser(response.data);
+          setFormData({
+            name: response.data.name || '',
+            email: response.data.email || '',
+            github: response.data.github || '',
+            bio: response.data.bio || '',
+            experienceLevel: response.data.experienceLevel || ''
+          });
         }
       } catch (err) {
         setError('Erro ao carregar dados do usuário');
@@ -54,34 +61,51 @@ function Profile() {
     };
 
     loadUserData();
-  }, [id, isOwnProfile, currentUser]);
+  }, [id]);
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        setError('Token não encontrado. Por favor, faça login novamente.');
+        return;
+      }
+
       const response = await axios.put(
         `/api/users/${user.id}`,
         formData,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
+      const updatedUser = response.data;
+      
       if (isOwnProfile) {
-        localStorage.setItem('user', JSON.stringify(response.data));
+        localStorage.setItem('user', JSON.stringify(updatedUser));
       }
-      setUser(response.data);
+      
+      setUser(updatedUser);
+      setFormData({
+        name: updatedUser.name || '',
+        email: updatedUser.email || '',
+        github: updatedUser.github || '',
+        bio: updatedUser.bio || '',
+        experienceLevel: updatedUser.experienceLevel || ''
+      });
+      
       setSuccess('Perfil atualizado com sucesso!');
       setEditing(false);
     } catch (err) {
-      setError('Erro ao atualizar perfil');
-      console.error(err);
+      console.error('Erro ao atualizar perfil:', err);
+      setError('Erro ao atualizar perfil: ' + (err.response?.data || err.message));
     }
   };
 
@@ -92,19 +116,7 @@ function Profile() {
   return (
     <Container maxWidth="md" sx={{ mt: 4 }}>
       <Paper sx={{ p: 4 }}>
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-        
-        {success && (
-          <Alert severity="success" sx={{ mb: 2 }}>
-            {success}
-          </Alert>
-        )}
-
-        <Grid container spacing={4}>
+        <Grid container spacing={3}>
           <Grid item xs={12} md={4} sx={{ textAlign: 'center' }}>
             <Avatar
               src={user.avatar}
@@ -133,6 +145,18 @@ function Profile() {
           </Grid>
 
           <Grid item xs={12} md={8}>
+            {error && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {error}
+              </Alert>
+            )}
+            
+            {success && (
+              <Alert severity="success" sx={{ mb: 2 }}>
+                {success}
+              </Alert>
+            )}
+
             {editing && isOwnProfile ? (
               <Box component="form" onSubmit={handleSubmit}>
                 <TextField
@@ -198,7 +222,16 @@ function Profile() {
                   >
                     Salvar
                   </Button>
-                  <Button onClick={() => setEditing(false)}>
+                  <Button onClick={() => {
+                    setEditing(false);
+                    setFormData({
+                      name: user.name || '',
+                      email: user.email || '',
+                      github: user.github || '',
+                      bio: user.bio || '',
+                      experienceLevel: user.experienceLevel || ''
+                    });
+                  }}>
                     Cancelar
                   </Button>
                 </Box>

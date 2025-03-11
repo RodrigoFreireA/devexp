@@ -13,13 +13,13 @@ public class Comment {
     @Column(nullable = false)
     private String content;
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "author_id", nullable = false)
+    private User author;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "post_id", nullable = false)
     private Post post;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "author_id", nullable = false)
-    private User author;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;

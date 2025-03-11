@@ -49,10 +49,36 @@ function Feed() {
 
     const fetchPosts = async () => {
         try {
+            console.log('Buscando posts...');
             const response = await axios.get('/api/posts');
-            setPosts(response.data);
+            console.log('Posts recebidos:', response.data);
+            if (!Array.isArray(response.data)) {
+                console.error('Resposta inválida da API: posts não é um array', response.data);
+                setPosts([]);
+                return;
+            }
+            // Filtra posts inválidos e ordena por data de criação (mais novos primeiro)
+            const validPosts = response.data
+                .filter(post => 
+                    post && 
+                    post.id && 
+                    post.author && 
+                    post.author.id && 
+                    post.author.name
+                )
+                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            
+            console.log('Posts válidos:', validPosts);
+            setPosts(validPosts);
         } catch (err) {
             console.error('Erro ao carregar posts:', err);
+            console.error('Detalhes do erro:', {
+                message: err.message,
+                response: err.response?.data,
+                status: err.response?.status
+            });
+            setError('Erro ao carregar posts: ' + err.message);
+            setPosts([]);
         }
     };
 
@@ -94,30 +120,57 @@ function Feed() {
     const handleLike = async (postId) => {
         try {
             const currentUser = JSON.parse(localStorage.getItem('user'));
-            if (!currentUser) {
+            if (!currentUser || !currentUser.id) {
                 navigate('/auth');
+                return;
+            }
+
+            if (!postId) {
+                console.error('ID do post não fornecido');
                 return;
             }
 
             await axios.post(`/api/posts/${postId}/like`, {
                 userId: currentUser.id
             });
-            fetchPosts();
+            await fetchPosts();
         } catch (err) {
             console.error('Erro ao curtir post:', err);
+            console.error('Detalhes do erro:', {
+                message: err.message,
+                response: err.response?.data,
+                status: err.response?.status
+            });
+            setError('Erro ao curtir post: ' + (err.response?.data || err.message));
         }
     };
 
     const handleDelete = async (postId) => {
+        if (!postId) {
+            console.error('ID do post não fornecido');
+            return;
+        }
+
         if (window.confirm('Tem certeza que deseja excluir este post?')) {
             try {
                 const token = localStorage.getItem('token');
+                if (!token) {
+                    navigate('/auth');
+                    return;
+                }
+
                 await axios.delete(`/api/posts/${postId}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                fetchPosts();
+                await fetchPosts();
             } catch (err) {
                 console.error('Erro ao deletar post:', err);
+                console.error('Detalhes do erro:', {
+                    message: err.message,
+                    response: err.response?.data,
+                    status: err.response?.status
+                });
+                setError('Erro ao deletar post: ' + (err.response?.data || err.message));
             }
         }
     };
@@ -125,65 +178,116 @@ function Feed() {
     const handleComment = async (postId, commentText) => {
         try {
             const currentUser = JSON.parse(localStorage.getItem('user'));
-            if (!currentUser) {
+            const token = localStorage.getItem('token');
+            
+            if (!currentUser || !currentUser.id) {
                 navigate('/auth');
                 return;
             }
 
-            await axios.post(`/api/posts/${postId}/comment`, {
-                userId: currentUser.id,
-                content: commentText
-            });
-            fetchPosts();
+            if (!token) {
+                setError('Sessão expirada. Por favor, faça login novamente.');
+                navigate('/auth');
+                return;
+            }
+
+            if (!postId) {
+                console.error('ID do post não fornecido');
+                return;
+            }
+
+            if (!commentText || !commentText.trim()) {
+                console.error('Comentário vazio');
+                return;
+            }
+
+            const response = await axios.post(
+                `/api/posts/${postId}/comment`,
+                {
+                    userId: currentUser.id,
+                    content: commentText.trim()
+                },
+                {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+
+            console.log('Resposta do servidor:', response.data);
+            await fetchPosts();
         } catch (err) {
             console.error('Erro ao comentar:', err);
+            console.error('Detalhes do erro:', {
+                message: err.message,
+                response: err.response?.data,
+                status: err.response?.status
+            });
+            if (err.response?.status === 401) {
+                setError('Sessão expirada. Por favor, faça login novamente.');
+                navigate('/auth');
+            } else {
+                setError('Erro ao comentar: ' + (err.response?.data || err.message));
+            }
         }
     };
 
     const PostCard = ({ post }) => {
         const [comment, setComment] = useState('');
+        const [isCodeExpanded, setIsCodeExpanded] = useState(false);
         const currentUser = JSON.parse(localStorage.getItem('user'));
         const isAdmin = currentUser?.roles?.includes('ROLE_ADMIN');
-        const isAuthor = post.author.id === currentUser?.id;
+        const isAuthor = post?.author?.id === currentUser?.id;
+
+        // Verifica se o post é válido
+        if (!post || !post.author || !post.author.id) {
+            console.error('Post inválido:', post);
+            return null;
+        }
 
         return (
-            <Card sx={{ mb: 3, backgroundColor: post.theme === 'dark' ? '#1E1E1E' : '#FFFFFF' }}>
+            <Card sx={{ mb: 3, backgroundColor: post?.theme === 'dark' ? '#1E1E1E' : '#FFFFFF' }}>
                 <CardContent>
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                         <Avatar
-                            src={post.author.avatar}
+                            src={post.author?.avatar}
                             sx={{ cursor: 'pointer', mr: 2 }}
-                            onClick={() => navigate(`/profile/${post.author.id}`)}
-                        />
+                            onClick={() => navigate(`/profile/${post.author?.id}`)}
+                        >
+                            {post.author?.name?.charAt(0)}
+                        </Avatar>
                         <Box>
                             <Typography
                                 variant="subtitle1"
                                 sx={{ 
                                     cursor: 'pointer',
-                                    color: post.theme === 'dark' ? '#FFFFFF' : 'inherit'
+                                    color: post?.theme === 'dark' ? '#FFFFFF' : 'inherit'
                                 }}
-                                onClick={() => navigate(`/profile/${post.author.id}`)}
+                                onClick={() => navigate(`/profile/${post.author?.id}`)}
                             >
-                                {post.author.name}
+                                {post.author?.name}
                             </Typography>
                             <Typography 
                                 variant="caption" 
-                                sx={{ color: post.theme === 'dark' ? '#CCCCCC' : 'text.secondary' }}
+                                sx={{ color: post?.theme === 'dark' ? '#CCCCCC' : 'text.secondary' }}
                             >
-                                {new Date(post.createdAt).toLocaleDateString()}
+                                {post.createdAt ? new Date(post.createdAt).toLocaleDateString() : 'Data não disponível'}
                             </Typography>
                         </Box>
                         <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center' }}>
-                            <Chip
-                                label={post.author.experienceLevel}
-                                size="small"
-                                color="primary"
-                                sx={{ mr: 1 }}
-                            />
+                            {post.author?.experienceLevel && (
+                                <Chip
+                                    label={post.author.experienceLevel}
+                                    size="small"
+                                    color="primary"
+                                    sx={{ mr: 1 }}
+                                />
+                            )}
                             {(isAdmin || isAuthor) && (
                                 <IconButton
                                     onClick={() => handleDelete(post.id)}
-                                    sx={{ color: post.theme === 'dark' ? '#FFFFFF' : 'inherit' }}
+                                    sx={{ color: post?.theme === 'dark' ? '#FFFFFF' : 'inherit' }}
                                 >
                                     <DeleteIcon />
                                 </IconButton>
@@ -194,35 +298,41 @@ function Feed() {
                     <Typography 
                         variant="h6" 
                         gutterBottom
-                        sx={{ color: post.theme === 'dark' ? '#FFFFFF' : 'inherit' }}
+                        sx={{ color: post?.theme === 'dark' ? '#FFFFFF' : 'inherit' }}
                     >
-                        {post.title}
+                        {post.title || 'Sem título'}
                     </Typography>
 
                     <Typography 
                         variant="body1" 
                         sx={{ 
                             mb: 2,
-                            color: post.theme === 'dark' ? '#CCCCCC' : 'inherit'
+                            color: post?.theme === 'dark' ? '#CCCCCC' : 'inherit'
                         }}
                     >
-                        {post.content}
+                        {post.content || 'Sem conteúdo'}
                     </Typography>
 
-                    {post.code && (
+                    {post.code && post.language && (
                         <Paper 
                             elevation={3} 
                             sx={{ 
                                 mb: 2, 
                                 overflow: 'hidden',
-                                backgroundColor: post.theme === 'dark' ? '#2D2D2D' : '#F5F5F5'
+                                backgroundColor: post?.theme === 'dark' ? '#2D2D2D' : '#F5F5F5'
                             }}
                         >
-                            <Box sx={{ p: 1, backgroundColor: post.theme === 'dark' ? '#1E1E1E' : '#E0E0E0' }}>
+                            <Box sx={{ 
+                                p: 1, 
+                                backgroundColor: post?.theme === 'dark' ? '#1E1E1E' : '#E0E0E0',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center'
+                            }}>
                                 <Typography 
                                     variant="caption"
                                     sx={{ 
-                                        color: post.theme === 'dark' ? '#CCCCCC' : '#666666',
+                                        color: post?.theme === 'dark' ? '#CCCCCC' : '#666666',
                                         display: 'flex',
                                         alignItems: 'center'
                                     }}
@@ -230,18 +340,65 @@ function Feed() {
                                     <CodeIcon sx={{ mr: 1, fontSize: 16 }} />
                                     {post.language}
                                 </Typography>
+                                <Button
+                                    size="small"
+                                    onClick={() => setIsCodeExpanded(!isCodeExpanded)}
+                                    sx={{ 
+                                        color: post?.theme === 'dark' ? '#CCCCCC' : '#666666',
+                                        textTransform: 'none',
+                                        minWidth: 'auto'
+                                    }}
+                                >
+                                    {isCodeExpanded ? 'Recolher' : 'Expandir'}
+                                </Button>
                             </Box>
-                            <SyntaxHighlighter
-                                language={post.language.toLowerCase()}
-                                style={post.theme === 'dark' ? vscDarkPlus : vs}
-                                customStyle={{
-                                    margin: 0,
-                                    padding: '16px',
-                                    backgroundColor: 'transparent'
-                                }}
-                            >
-                                {post.code}
-                            </SyntaxHighlighter>
+                            <Box sx={{
+                                maxHeight: isCodeExpanded ? 'none' : '300px',
+                                overflow: 'hidden',
+                                position: 'relative'
+                            }}>
+                                <SyntaxHighlighter
+                                    language={post.language.toLowerCase()}
+                                    style={post?.theme === 'dark' ? vscDarkPlus : vs}
+                                    customStyle={{
+                                        margin: 0,
+                                        padding: '16px',
+                                        backgroundColor: 'transparent'
+                                    }}
+                                >
+                                    {post.code}
+                                </SyntaxHighlighter>
+                                {!isCodeExpanded && (
+                                    <Box
+                                        sx={{
+                                            position: 'absolute',
+                                            bottom: 0,
+                                            left: 0,
+                                            right: 0,
+                                            height: '50px',
+                                            background: `linear-gradient(transparent, ${post?.theme === 'dark' ? '#2D2D2D' : '#F5F5F5'})`,
+                                            display: 'flex',
+                                            alignItems: 'flex-end',
+                                            justifyContent: 'center',
+                                            paddingBottom: '8px'
+                                        }}
+                                    >
+                                        <Button
+                                            size="small"
+                                            onClick={() => setIsCodeExpanded(true)}
+                                            sx={{
+                                                backgroundColor: post?.theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                                                color: post?.theme === 'dark' ? '#FFFFFF' : '#000000',
+                                                '&:hover': {
+                                                    backgroundColor: post?.theme === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)'
+                                                }
+                                            }}
+                                        >
+                                            Ver mais
+                                        </Button>
+                                    </Box>
+                                )}
+                            </Box>
                         </Paper>
                     )}
 
@@ -251,35 +408,35 @@ function Feed() {
                         <Box>
                             <IconButton 
                                 onClick={() => handleLike(post.id)}
-                                sx={{ color: post.theme === 'dark' ? '#FFFFFF' : 'inherit' }}
+                                sx={{ color: post?.theme === 'dark' ? '#FFFFFF' : 'inherit' }}
                             >
-                                {post.isLiked ? <Favorite color="error" /> : <FavoriteBorder />}
+                                {post.likes?.includes(currentUser?.id) ? <Favorite color="error" /> : <FavoriteBorder />}
                             </IconButton>
                             <Typography 
                                 variant="caption" 
                                 sx={{ 
                                     mr: 2,
-                                    color: post.theme === 'dark' ? '#CCCCCC' : 'text.secondary'
+                                    color: post?.theme === 'dark' ? '#CCCCCC' : 'text.secondary'
                                 }}
                             >
-                                {post.likesCount}
+                                {post.likesCount || 0}
                             </Typography>
                             <IconButton
-                                sx={{ color: post.theme === 'dark' ? '#FFFFFF' : 'inherit' }}
+                                sx={{ color: post?.theme === 'dark' ? '#FFFFFF' : 'inherit' }}
                             >
                                 <CommentIcon />
                             </IconButton>
                             <Typography 
                                 variant="caption"
                                 sx={{ 
-                                    color: post.theme === 'dark' ? '#CCCCCC' : 'text.secondary'
+                                    color: post?.theme === 'dark' ? '#CCCCCC' : 'text.secondary'
                                 }}
                             >
-                                {post.commentsCount}
+                                {post.commentsCount || 0}
                             </Typography>
                         </Box>
                         <IconButton
-                            sx={{ color: post.theme === 'dark' ? '#FFFFFF' : 'inherit' }}
+                            sx={{ color: post?.theme === 'dark' ? '#FFFFFF' : 'inherit' }}
                         >
                             <ShareIcon />
                         </IconButton>
@@ -287,21 +444,25 @@ function Feed() {
 
                     {/* Seção de Comentários */}
                     <Box sx={{ mt: 2 }}>
-                        {post.comments && post.comments.map((comment, index) => (
-                            <Box key={index} sx={{ mb: 1, display: 'flex', alignItems: 'flex-start' }}>
-                                <Avatar
-                                    src={comment.author.avatar}
-                                    sx={{ width: 24, height: 24, mr: 1 }}
-                                />
-                                <Box>
-                                    <Typography variant="subtitle2" component="span">
-                                        {comment.author.name}
-                                    </Typography>
-                                    <Typography variant="body2" sx={{ ml: 1 }}>
-                                        {comment.content}
-                                    </Typography>
+                        {post.comments?.map((comment, index) => (
+                            comment?.author && (
+                                <Box key={index} sx={{ mb: 1, display: 'flex', alignItems: 'flex-start' }}>
+                                    <Avatar
+                                        src={comment.author?.avatar}
+                                        sx={{ width: 24, height: 24, mr: 1 }}
+                                    >
+                                        {comment.author?.name?.charAt(0)}
+                                    </Avatar>
+                                    <Box>
+                                        <Typography variant="subtitle2" component="span">
+                                            {comment.author?.name}
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ ml: 1 }}>
+                                            {comment.content}
+                                        </Typography>
+                                    </Box>
                                 </Box>
-                            </Box>
+                            )
                         ))}
 
                         <Box sx={{ display: 'flex', mt: 2 }}>
@@ -312,9 +473,9 @@ function Feed() {
                                 value={comment}
                                 onChange={(e) => setComment(e.target.value)}
                                 sx={{
-                                    backgroundColor: post.theme === 'dark' ? '#2D2D2D' : '#F5F5F5',
+                                    backgroundColor: post?.theme === 'dark' ? '#2D2D2D' : '#F5F5F5',
                                     '& .MuiOutlinedInput-root': {
-                                        color: post.theme === 'dark' ? '#FFFFFF' : 'inherit'
+                                        color: post?.theme === 'dark' ? '#FFFFFF' : 'inherit'
                                     }
                                 }}
                             />

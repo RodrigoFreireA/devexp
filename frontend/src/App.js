@@ -8,6 +8,7 @@ import Profile from './pages/Profile';
 import Auth from './pages/Auth';
 import Admin from './pages/Admin';
 import Feed from './pages/Feed';
+import VerifyEmail from './pages/VerifyEmail';
 import { Box } from '@mui/material';
 
 const theme = createTheme({
@@ -42,7 +43,15 @@ function App() {
           <Navbar />
           <Box component="main" sx={{ flexGrow: 1, py: 3 }}>
             <Routes>
+              <Route path="/" element={
+                localStorage.getItem('token') ? (
+                  <Navigate to="/feed" replace />
+                ) : (
+                  <Navigate to="/auth" replace />
+                )
+              } />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/verify-email" element={<VerifyEmail />} />
               <Route
                 path="/admin"
                 element={
@@ -68,7 +77,7 @@ function App() {
                 }
               />
               <Route
-                path="/"
+                path="/feed"
                 element={
                   <PrivateRoute>
                     <Feed />
