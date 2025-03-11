@@ -28,6 +28,7 @@ public class DataInitializer implements CommandLineRunner {
             admin.setExperienceLevel(User.ExperienceLevel.SENIOR);
             admin.setAvatar("https://ui-avatars.com/api/?name=Administrador");
             admin.getRoles().add(User.Role.ROLE_ADMIN);
+            admin.setEmailVerified(true);
             userRepository.save(admin);
         }
 
