@@ -20,7 +20,10 @@ import {
     Alert,
     IconButton,
     Divider,
-    Paper
+    Paper,
+    CardHeader,
+    CardActions,
+    InputAdornment
 } from '@mui/material';
 import {
     Favorite,
@@ -34,6 +37,8 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus, vs } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import axios from 'axios';
 import CreatePost from '../components/CreatePost';
+import { useTheme } from '@mui/material/styles';
+import { alpha } from '@mui/material/styles';
 
 function Feed() {
     const navigate = useNavigate();
@@ -46,6 +51,7 @@ function Feed() {
     const [totalPages, setTotalPages] = useState(0);
     const [search, setSearch] = useState('');
     const [experienceLevel, setExperienceLevel] = useState('');
+    const theme = useTheme();
 
     const fetchPosts = async () => {
         try {
@@ -233,98 +239,103 @@ function Feed() {
         }
     };
 
-    const PostCard = ({ post }) => {
+    const PostCard = ({ post, currentUser, isAdmin, onLike, onDelete, onComment }) => {
         const [comment, setComment] = useState('');
-        const [isCodeExpanded, setIsCodeExpanded] = useState(false);
-        const currentUser = JSON.parse(localStorage.getItem('user'));
-        const isAdmin = currentUser?.roles?.includes('ROLE_ADMIN');
-        const isAuthor = post?.author?.id === currentUser?.id;
+        const theme = useTheme();
 
         // Verifica se o post é válido
-        if (!post || !post.author || !post.author.id) {
-            console.error('Post inválido:', post);
+        if (!post || !post.author) {
             return null;
         }
 
+        const isAuthor = currentUser?.id === post?.author?.id;
+
         return (
-            <Card sx={{ mb: 3, backgroundColor: post?.theme === 'dark' ? '#1E1E1E' : '#FFFFFF' }}>
-                <CardContent>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                        <Avatar
-                            src={post.author?.avatar}
-                            sx={{ cursor: 'pointer', mr: 2 }}
-                            onClick={() => navigate(`/profile/${post.author?.id}`)}
+            <Card 
+                sx={{ 
+                    mb: 2,
+                    bgcolor: theme.palette.mode === 'dark' ? 'background.paper' : 'white',
+                    boxShadow: theme.shadows[2],
+                    '&:hover': {
+                        boxShadow: theme.shadows[4]
+                    }
+                }}
+            >
+                <CardHeader
+                    avatar={
+                        <Avatar 
+                            src={post.author.avatar}
+                            sx={{ 
+                                bgcolor: theme.palette.primary.main,
+                                cursor: 'pointer'
+                            }}
+                            onClick={() => navigate(`/profile/${post.author.id}`)}
                         >
-                            {post.author?.name?.charAt(0)}
+                            {post.author.name?.[0] || '?'}
                         </Avatar>
-                        <Box>
-                            <Typography
-                                variant="subtitle1"
+                    }
+                    action={
+                        (isAdmin || isAuthor) && (
+                            <IconButton onClick={() => onDelete(post.id)}>
+                                <DeleteIcon />
+                            </IconButton>
+                        )
+                    }
+                    title={
+                        <Typography 
+                            variant="subtitle1" 
+                            component="span"
+                            sx={{ 
+                                fontWeight: 'bold',
+                                color: theme.palette.text.primary,
+                                cursor: 'pointer'
+                            }}
+                            onClick={() => navigate(`/profile/${post.author.id}`)}
+                        >
+                            {post.author.name}
+                        </Typography>
+                    }
+                    subheader={
+                        <Typography 
+                            variant="body2" 
+                            color="text.secondary"
+                            sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+                        >
+                            {new Date(post.createdAt).toLocaleString()}
+                            <Chip 
+                                size="small" 
+                                label={post.author.experienceLevel} 
                                 sx={{ 
-                                    cursor: 'pointer',
-                                    color: post?.theme === 'dark' ? '#FFFFFF' : 'inherit'
+                                    bgcolor: theme.palette.mode === 'dark' 
+                                        ? alpha(theme.palette.primary.main, 0.2) 
+                                        : alpha(theme.palette.primary.main, 0.1),
+                                    color: theme.palette.primary.main
                                 }}
-                                onClick={() => navigate(`/profile/${post.author?.id}`)}
-                            >
-                                {post.author?.name}
-                            </Typography>
-                            <Typography 
-                                variant="caption" 
-                                sx={{ color: post?.theme === 'dark' ? '#CCCCCC' : 'text.secondary' }}
-                            >
-                                {post.createdAt ? new Date(post.createdAt).toLocaleDateString() : 'Data não disponível'}
-                            </Typography>
-                        </Box>
-                        <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center' }}>
-                            {post.author?.experienceLevel && (
-                                <Chip
-                                    label={post.author.experienceLevel}
-                                    size="small"
-                                    color="primary"
-                                    sx={{ mr: 1 }}
-                                />
-                            )}
-                            {(isAdmin || isAuthor) && (
-                                <IconButton
-                                    onClick={() => handleDelete(post.id)}
-                                    sx={{ color: post?.theme === 'dark' ? '#FFFFFF' : 'inherit' }}
-                                >
-                                    <DeleteIcon />
-                                </IconButton>
-                            )}
-                        </Box>
-                    </Box>
-
-                    <Typography 
-                        variant="h6" 
-                        gutterBottom
-                        sx={{ color: post?.theme === 'dark' ? '#FFFFFF' : 'inherit' }}
-                    >
-                        {post.title || 'Sem título'}
-                    </Typography>
-
+                            />
+                        </Typography>
+                    }
+                />
+                <CardContent>
                     <Typography 
                         variant="body1" 
-                        sx={{ 
-                            mb: 2,
-                            color: post?.theme === 'dark' ? '#CCCCCC' : 'inherit'
-                        }}
+                        color="text.primary"
+                        sx={{ whiteSpace: 'pre-wrap', mb: 2 }}
                     >
-                        {post.content || 'Sem conteúdo'}
+                        {post.content}
                     </Typography>
 
                     {post.code && post.language && (
                         <Paper 
                             elevation={3} 
-                            sx={{ 
+                            sx={{
                                 mb: 2, 
                                 overflow: 'hidden',
-                                backgroundColor: post?.theme === 'dark' ? '#2D2D2D' : '#F5F5F5'
+                                bgcolor: theme.palette.mode === 'dark' ? '#1e1e1e' : '#f5f5f5'
                             }}
                         >
                             <Box sx={{ 
                                 p: 1, 
-                                backgroundColor: post?.theme === 'dark' ? '#1E1E1E' : '#E0E0E0',
+                                bgcolor: theme.palette.mode === 'dark' ? '#2d2d2d' : '#e0e0e0',
                                 display: 'flex',
                                 justifyContent: 'space-between',
                                 alignItems: 'center'
@@ -332,7 +343,7 @@ function Feed() {
                                 <Typography 
                                     variant="caption"
                                     sx={{ 
-                                        color: post?.theme === 'dark' ? '#CCCCCC' : '#666666',
+                                        color: theme.palette.mode === 'dark' ? '#cccccc' : '#666666',
                                         display: 'flex',
                                         alignItems: 'center'
                                     }}
@@ -340,26 +351,14 @@ function Feed() {
                                     <CodeIcon sx={{ mr: 1, fontSize: 16 }} />
                                     {post.language}
                                 </Typography>
-                                <Button
-                                    size="small"
-                                    onClick={() => setIsCodeExpanded(!isCodeExpanded)}
-                                    sx={{ 
-                                        color: post?.theme === 'dark' ? '#CCCCCC' : '#666666',
-                                        textTransform: 'none',
-                                        minWidth: 'auto'
-                                    }}
-                                >
-                                    {isCodeExpanded ? 'Recolher' : 'Expandir'}
-                                </Button>
                             </Box>
                             <Box sx={{
-                                maxHeight: isCodeExpanded ? 'none' : '300px',
-                                overflow: 'hidden',
-                                position: 'relative'
+                                maxHeight: '300px',
+                                overflow: 'auto'
                             }}>
                                 <SyntaxHighlighter
                                     language={post.language.toLowerCase()}
-                                    style={post?.theme === 'dark' ? vscDarkPlus : vs}
+                                    style={theme.palette.mode === 'dark' ? vscDarkPlus : vs}
                                     customStyle={{
                                         margin: 0,
                                         padding: '16px',
@@ -368,131 +367,133 @@ function Feed() {
                                 >
                                     {post.code}
                                 </SyntaxHighlighter>
-                                {!isCodeExpanded && (
-                                    <Box
-                                        sx={{
-                                            position: 'absolute',
-                                            bottom: 0,
-                                            left: 0,
-                                            right: 0,
-                                            height: '50px',
-                                            background: `linear-gradient(transparent, ${post?.theme === 'dark' ? '#2D2D2D' : '#F5F5F5'})`,
-                                            display: 'flex',
-                                            alignItems: 'flex-end',
-                                            justifyContent: 'center',
-                                            paddingBottom: '8px'
-                                        }}
-                                    >
-                                        <Button
-                                            size="small"
-                                            onClick={() => setIsCodeExpanded(true)}
-                                            sx={{
-                                                backgroundColor: post?.theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-                                                color: post?.theme === 'dark' ? '#FFFFFF' : '#000000',
-                                                '&:hover': {
-                                                    backgroundColor: post?.theme === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)'
-                                                }
-                                            }}
-                                        >
-                                            Ver mais
-                                        </Button>
-                                    </Box>
-                                )}
                             </Box>
                         </Paper>
                     )}
-
-                    <Divider sx={{ my: 2 }} />
-
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <Box>
-                            <IconButton 
-                                onClick={() => handleLike(post.id)}
-                                sx={{ color: post?.theme === 'dark' ? '#FFFFFF' : 'inherit' }}
-                            >
-                                {post.likes?.includes(currentUser?.id) ? <Favorite color="error" /> : <FavoriteBorder />}
-                            </IconButton>
-                            <Typography 
-                                variant="caption" 
-                                sx={{ 
-                                    mr: 2,
-                                    color: post?.theme === 'dark' ? '#CCCCCC' : 'text.secondary'
-                                }}
-                            >
-                                {post.likesCount || 0}
-                            </Typography>
-                            <IconButton
-                                sx={{ color: post?.theme === 'dark' ? '#FFFFFF' : 'inherit' }}
-                            >
-                                <CommentIcon />
-                            </IconButton>
-                            <Typography 
-                                variant="caption"
-                                sx={{ 
-                                    color: post?.theme === 'dark' ? '#CCCCCC' : 'text.secondary'
-                                }}
-                            >
-                                {post.commentsCount || 0}
-                            </Typography>
-                        </Box>
-                        <IconButton
-                            sx={{ color: post?.theme === 'dark' ? '#FFFFFF' : 'inherit' }}
-                        >
-                            <ShareIcon />
-                        </IconButton>
-                    </Box>
-
-                    {/* Seção de Comentários */}
-                    <Box sx={{ mt: 2 }}>
-                        {post.comments?.map((comment, index) => (
-                            comment?.author && (
-                                <Box key={index} sx={{ mb: 1, display: 'flex', alignItems: 'flex-start' }}>
-                                    <Avatar
-                                        src={comment.author?.avatar}
-                                        sx={{ width: 24, height: 24, mr: 1 }}
-                                    >
-                                        {comment.author?.name?.charAt(0)}
-                                    </Avatar>
-                                    <Box>
-                                        <Typography variant="subtitle2" component="span">
-                                            {comment.author?.name}
-                                        </Typography>
-                                        <Typography variant="body2" sx={{ ml: 1 }}>
-                                            {comment.content}
-                                        </Typography>
-                                    </Box>
-                                </Box>
-                            )
-                        ))}
-
-                        <Box sx={{ display: 'flex', mt: 2 }}>
-                            <TextField
-                                fullWidth
-                                size="small"
-                                placeholder="Adicione um comentário..."
-                                value={comment}
-                                onChange={(e) => setComment(e.target.value)}
-                                sx={{
-                                    backgroundColor: post?.theme === 'dark' ? '#2D2D2D' : '#F5F5F5',
-                                    '& .MuiOutlinedInput-root': {
-                                        color: post?.theme === 'dark' ? '#FFFFFF' : 'inherit'
-                                    }
-                                }}
-                            />
-                            <Button
-                                variant="contained"
-                                sx={{ ml: 1 }}
-                                onClick={() => {
-                                    handleComment(post.id, comment);
-                                    setComment('');
-                                }}
-                                disabled={!comment.trim()}
-                            >
-                                Enviar
-                            </Button>
-                        </Box>
-                    </Box>
                 </CardContent>
+                <CardActions disableSpacing>
+                    <IconButton 
+                        onClick={() => onLike(post.id)}
+                        color={post.likes?.includes(currentUser?.id) ? "primary" : "default"}
+                    >
+                        <Favorite />
+                    </IconButton>
+                    <Typography color="text.secondary">
+                        {post.likes?.length || 0}
+                    </Typography>
+                    <IconButton
+                        sx={{ ml: 1 }}
+                        onClick={() => {
+                            const commentInput = document.querySelector(`#comment-input-${post.id}`);
+                            if (commentInput) {
+                                commentInput.focus();
+                            }
+                        }}
+                    >
+                        <CommentIcon />
+                    </IconButton>
+                    <Typography color="text.secondary">
+                        {post.comments?.length || 0}
+                    </Typography>
+                </CardActions>
+
+                {post.comments && post.comments.length > 0 && (
+                    <Box sx={{ px: 2, pb: 2 }}>
+                        {post.comments.map((comment, index) => (
+                            <Box
+                                key={index}
+                                sx={{
+                                    display: 'flex',
+                                    alignItems: 'flex-start',
+                                    mb: 1,
+                                    p: 1,
+                                    borderRadius: 1,
+                                    bgcolor: theme.palette.mode === 'dark' 
+                                        ? alpha(theme.palette.primary.main, 0.1)
+                                        : alpha(theme.palette.primary.main, 0.05)
+                                }}
+                            >
+                                <Avatar
+                                    src={comment.author.avatar}
+                                    sx={{ 
+                                        width: 24, 
+                                        height: 24, 
+                                        mr: 1,
+                                        bgcolor: theme.palette.primary.main,
+                                        cursor: 'pointer'
+                                    }}
+                                    onClick={() => navigate(`/profile/${comment.author.id}`)}
+                                >
+                                    {comment.author.name?.[0]}
+                                </Avatar>
+                                <Box sx={{ flex: 1 }}>
+                                    <Typography 
+                                        variant="subtitle2" 
+                                        component="span"
+                                        sx={{ 
+                                            fontWeight: 'bold',
+                                            color: theme.palette.text.primary,
+                                            cursor: 'pointer'
+                                        }}
+                                        onClick={() => navigate(`/profile/${comment.author.id}`)}
+                                    >
+                                        {comment.author.name}
+                                    </Typography>
+                                    <Typography 
+                                        variant="body2" 
+                                        color="text.primary"
+                                        sx={{ ml: 1 }}
+                                    >
+                                        {comment.content}
+                                    </Typography>
+                                </Box>
+                            </Box>
+                        ))}
+                    </Box>
+                )}
+
+                <Box sx={{ p: 2, pt: 0 }}>
+                    <TextField
+                        id={`comment-input-${post.id}`}
+                        fullWidth
+                        size="small"
+                        placeholder="Escreva um comentário..."
+                        value={comment}
+                        onChange={(e) => setComment(e.target.value)}
+                        onKeyPress={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                if (comment.trim()) {
+                                    onComment(post.id, comment);
+                                    setComment('');
+                                }
+                            }
+                        }}
+                        InputProps={{
+                            endAdornment: comment.trim() && (
+                                <InputAdornment position="end">
+                                    <IconButton
+                                        onClick={() => {
+                                            onComment(post.id, comment);
+                                            setComment('');
+                                        }}
+                                        color="primary"
+                                        size="small"
+                                    >
+                                        <SendIcon />
+                                    </IconButton>
+                                </InputAdornment>
+                            )
+                        }}
+                        sx={{
+                            '& .MuiOutlinedInput-root': {
+                                bgcolor: theme.palette.mode === 'dark' 
+                                    ? alpha(theme.palette.common.white, 0.05)
+                                    : alpha(theme.palette.common.black, 0.05)
+                            }
+                        }}
+                    />
+                </Box>
             </Card>
         );
     };
@@ -607,7 +608,15 @@ function Feed() {
                     ) : (
                         <>
                             {posts.map(post => (
-                                <PostCard key={post.id} post={post} />
+                                <PostCard
+                                    key={post.id}
+                                    post={post}
+                                    currentUser={JSON.parse(localStorage.getItem('user'))}
+                                    isAdmin={JSON.parse(localStorage.getItem('user'))?.roles?.includes('ROLE_ADMIN')}
+                                    onLike={handleLike}
+                                    onDelete={handleDelete}
+                                    onComment={handleComment}
+                                />
                             ))}
                         </>
                     )}
