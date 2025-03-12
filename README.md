@@ -114,14 +114,14 @@ REACT_APP_API_URL=http://localhost:8080
 ## 📸 Telas da Aplicação
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/74d1a09b-b80a-4ceb-9740-f905a57c551b" width="250">
-  <img src="https://github.com/user-attachments/assets/63a3f8fe-d5c7-4076-ab4b-b768364767cf" width="250">
-  <img src="https://github.com/user-attachments/assets/5ec5a385-a1da-4f74-ac49-e318e829a631" width="250">
+  ![image](https://github.com/user-attachments/assets/66ee33bc-fd75-4043-a78c-361209ad7b0f)
+  ![image](https://github.com/user-attachments/assets/f6714102-9416-4445-b6ac-44a26dbe6fe0)
+  ![image](https://github.com/user-attachments/assets/95b9d369-851b-4c97-b7d8-ad28a2b25cb8)
 </p>
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/2c9f972a-1c29-4a9e-aa8a-1b7e608a0923" width="250">
-  <img src="https://github.com/user-attachments/assets/071cd555-ab00-486f-a4e0-e8502926c563" width="250">
+  ![image](https://github.com/user-attachments/assets/7f47f645-d8fb-4423-bc33-dbe67a81cc6d)
+  ![image](https://github.com/user-attachments/assets/b016cc37-192a-4b2e-a114-1e2bfcc7a20d)
 </p>
 
 
